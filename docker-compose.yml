@@ -1,0 +1,7 @@
+version: '2.1'
+
+services:
+  exchange-api:
+    build: ./exchange-api
+    ports:
+      - "5010:8080"
