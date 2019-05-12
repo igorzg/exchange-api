@@ -2,10 +2,9 @@ package io.avrios.services.entities;
 
 import com.fasterxml.jackson.annotation.JsonGetter;
 
-import java.sql.Timestamp;
-import java.time.Instant;
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 
 /**
@@ -40,6 +39,14 @@ public class Cube {
 
   @JsonGetter(value = "timestamp")
   public Long getTimestamp() {
-    return getDate().atStartOfDay().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+    return dateToEpoch(getDate());
+  }
+
+  public static Long dateToEpoch(LocalDateTime date) {
+    return date.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+  }
+
+  public static Long dateToEpoch(LocalDate date) {
+    return date.atStartOfDay().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
   }
 }
