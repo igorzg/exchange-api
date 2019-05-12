@@ -6,6 +6,7 @@ Angular - not done fully, I need to connect to REST apis and add dockerfile for 
 # Requirements
 
 * [Docker](https://docs.docker.com/install/)
+* [Docker-Compose](https://docs.docker.com/compose/install/)
 
 # Running
 ```
