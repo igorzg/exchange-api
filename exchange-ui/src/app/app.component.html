@@ -1,0 +1,35 @@
+<form class="avrios">
+  <h4>Currency converter:</h4>
+  <div>
+    <mat-form-field>
+      <input matInput [matDatepicker]="picker" placeholder="Choose a date">
+      <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+      <mat-datepicker #picker></mat-datepicker>
+    </mat-form-field>
+  </div>
+  <div>
+    <mat-form-field>
+      <mat-select placeholder="Currency I Have" [(value)]="convertFrom">
+        <mat-option value="eur">EUR</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field>
+      <mat-select placeholder="Currency I Want" [(value)]="convertInto">
+        <mat-option value="hrk">HRK</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+  <div>
+    <mat-form-field class="example-full-width">
+      <input matInput [value]="amountFrom" placeholder="Amount">
+    </mat-form-field>
+
+    <mat-form-field class="example-full-width">
+      <input matInput [value]="amountInto" placeholder="Amount">
+    </mat-form-field>
+  </div>
+  <div>
+    <button mat-button>Convert</button>
+  </div>
+</form>
+
