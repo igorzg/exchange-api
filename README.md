@@ -1,7 +1,7 @@
 # exchange api
 Spring boot 
 # exchange ui
-Angular - not done fully I need to connect to REST apis
+Angular - not done fully, I need to connect to REST apis and add dockerfile for angular build
 
 # Requirements
 
