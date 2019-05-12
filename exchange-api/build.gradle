@@ -1,0 +1,39 @@
+buildscript {
+  ext {
+    springBootVersion = '2.1.2.RELEASE'
+  }
+  repositories {
+    mavenCentral()
+  }
+  dependencies {
+    classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+  }
+}
+
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+group = 'com.avrios'
+version = '0.0.1'
+sourceCompatibility = 10
+targetCompatibility = 10
+
+repositories {
+  jcenter()
+  mavenCentral()
+  maven {
+    url "https://nexus.bedatadriven.com/content/repositories/public"
+  }
+}
+
+
+dependencies {
+  compile "org.springframework.boot:spring-boot-starter-logging"
+  compile "org.springframework.boot:spring-boot-starter-web"
+  compile "com.fasterxml.jackson.core:jackson-databind:${verJackson}"
+  compile "com.fasterxml.jackson.dataformat:jackson-dataformat-xml:${verJackson}"
+  testCompile "org.springframework.boot:spring-boot-starter-test"
+}
