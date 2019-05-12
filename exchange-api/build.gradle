@@ -33,7 +33,8 @@ repositories {
 dependencies {
   compile "org.springframework.boot:spring-boot-starter-logging"
   compile "org.springframework.boot:spring-boot-starter-web"
+  compile "org.apache.httpcomponents:httpclient:${verHttpClient}"
   compile "com.fasterxml.jackson.core:jackson-databind:${verJackson}"
-  compile "com.fasterxml.jackson.dataformat:jackson-dataformat-xml:${verJackson}"
+  compile "javax.xml.parsers:jaxp-api:${verDOMParser}"
   testCompile "org.springframework.boot:spring-boot-starter-test"
 }

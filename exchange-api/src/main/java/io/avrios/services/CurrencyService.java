@@ -1,15 +1,26 @@
 package io.avrios.services;
 
+import io.avrios.services.entities.Cube;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import javax.annotation.PostConstruct;
+import javax.xml.parsers.DocumentBuilder;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * @author igorzg on 2019-05-12.
@@ -23,17 +34,132 @@ public class CurrencyService {
   @Value("${app.exchange.d90}")
   private String exchangeApi;
 
-  private final RestTemplate restTemplate;
+
+  @Value("${app.exchange.dateformat}")
+  private String dateFormat;
+
+  private final HttpClient httpClient;
+
+  private final DocumentBuilder documentBuilder;
+
+  private List<Cube> cubeList;
 
   @Autowired
-  public CurrencyService(RestTemplate restTemplate) {
-    this.restTemplate = restTemplate;
+  public CurrencyService(HttpClient httpClient, DocumentBuilder documentBuilder) {
+    this.httpClient = httpClient;
+    this.documentBuilder = documentBuilder;
   }
+
 
   @PostConstruct
   public void afterInit() {
     logger.debug("Fetch xml document: {}", this.exchangeApi);
-    String document = this.restTemplate.getForObject(this.exchangeApi, String.class);
-    logger.debug("Document {}", document);
+    updateCubes();
+  }
+
+  /**
+   * Returns Cube map
+   *
+   * @return get cubemap
+   */
+  public List<Cube> getCubes() {
+    return cubeList;
+  }
+
+  /**
+   * Set cubes map
+   */
+  public void updateCubes() {
+    try {
+      var cubeMap = fetchCubes();
+      if (!cubeMap.isEmpty()) {
+        this.cubeList = cubeMap;
+      }
+    } catch (Exception e) {
+      logger.debug("Fetch CubeMap Error", e);
+    }
+  }
+
+  /**
+   * Fetches cubes map
+   *
+   * @return List<Cube>
+   * @throws Exception
+   */
+  public List<Cube>fetchCubes() throws Exception {
+    var nodeList = fetchNodeList();
+    return toCubeList(nodeList);
+  }
+
+  /**
+   * Get attribute value
+   *
+   * @param node Node
+   * @param name String
+   * @return String
+   */
+  private String getAttributeValue(Node node, String name) {
+    return node.getAttributes().getNamedItem(name).getNodeValue();
+  }
+
+
+  /**
+   * Convert List<Node> to Cube map by date
+   *
+   * @param nodeList List<Node>
+   * @return HashMap<String, List < Cube>>
+   */
+  private List<Cube> toCubeList(List<Node> nodeList) throws Exception {
+    final DateTimeFormatter format = DateTimeFormatter.ofPattern(dateFormat);
+    var list = new ArrayList<Cube>();
+    for (Node node : nodeList) {
+      var cubeList = toListOfCubeNode(node.getChildNodes());
+      var date = LocalDate.parse(getAttributeValue(node, "time"), format);
+      list.addAll(
+        cubeList.stream().map(
+          i -> new Cube(
+            getAttributeValue(i, "currency"),
+            Double.parseDouble(getAttributeValue(i, "rate")),
+            date
+          )
+        ).collect(Collectors.toList())
+      );
+    }
+    return list;
+  }
+
+  /**
+   * Convert NodeList to list of Cube Nodes
+   *
+   * @param nodeList NodeList
+   * @return List<Node>
+   */
+  private List<Node> toListOfCubeNode(NodeList nodeList) {
+    return toListOfNode(nodeList).stream().filter(i -> "Cube".equals(i.getNodeName())).collect(Collectors.toList());
+  }
+
+  /**
+   * Convert NodeList to list of Nodes
+   *
+   * @param nodeList NodeList
+   * @return List<Node>
+   */
+  private List<Node> toListOfNode(NodeList nodeList) {
+    return IntStream.range(0, nodeList.getLength()).mapToObj(nodeList::item).collect(Collectors.toList());
+  }
+
+  /**
+   * Fetch Node list
+   *
+   * @return list of cube nodes
+   * @throws Exception if xml is invalid
+   */
+  private List<Node> fetchNodeList() throws Exception {
+    var httpResponse = httpClient.execute(new HttpGet(this.exchangeApi));
+    var document = documentBuilder.parse(httpResponse.getEntity().getContent());
+    // Envelope
+    var envelopeNode = document.getDocumentElement();
+    // Cube -> Cube
+    return toListOfCubeNode(envelopeNode.getLastChild().getChildNodes());
   }
 }
