@@ -16,11 +16,11 @@ import javax.annotation.PostConstruct;
 import javax.xml.parsers.DocumentBuilder;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -98,15 +98,16 @@ public class CurrencyService {
 
   /**
    * Conversion
-   * @param from String currency eg. eur
-   * @param into String currency eg. usd
-   * @param value Double, eg. 20.0
+   *
+   * @param from      String currency eg. eur
+   * @param into      String currency eg. usd
+   * @param value     Double, eg. 20.0
    * @param timestamp Long
    * @return Double
    */
   public Converted convert(String from, String into, double value, Long timestamp) {
     final var closestTimestamp = getClosestTimestamp(timestamp);
-    var closestCubesList = cubeList.stream().filter(i -> i.getTimestamp().equals(closestTimestamp)).collect(Collectors.toList());
+    var closestCubesList = getCubes().stream().filter(i -> i.getTimestamp().equals(closestTimestamp)).collect(Collectors.toList());
     var intoCurrency = closestCubesList.stream().filter(i -> i.getCurrency().equals(into.toUpperCase())).findFirst();
     var fromCurrency = closestCubesList.stream().filter(i -> i.getCurrency().equals(from.toUpperCase())).findFirst();
     var result = value;
@@ -128,55 +129,27 @@ public class CurrencyService {
 
   /**
    * Parse date
+   *
    * @param date String
    * @return LocalDate
    */
   public LocalDate parseDate(String date) {
-    return LocalDate.parse(date, format);
-  }
-  /**
-   * Returns closest timestamp
-   *
-   * @param timestamp Long
-   * @return Long
-   */
-  public Long getClosestTimestamp(Long timestamp) {
-    return cubeList.stream().filter(i -> i.getTimestamp() <= timestamp).map(Cube::getTimestamp).unordered().collect(Collectors.toList()).get(0);
+    return LocalDate.parse(date, Optional.ofNullable(format).orElse(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
   }
 
   /**
-   * Get attribute value
+   * Fetch Node list
    *
-   * @param node Node
-   * @param name String
-   * @return String
+   * @return list of cube nodes
+   * @throws Exception if xml is invalid
    */
-  private String getAttributeValue(Node node, String name) {
-    return node.getAttributes().getNamedItem(name).getNodeValue();
-  }
-
-  /**
-   * Convert List<Node> to Cube map by date
-   *
-   * @param nodeList List<Node>
-   * @return HashMap<String, List < Cube>>
-   */
-  private List<Cube> toCubeList(List<Node> nodeList) throws Exception {
-    var list = new ArrayList<Cube>();
-    for (Node node : nodeList) {
-      var cubeList = toListOfCubeNode(node.getChildNodes());
-      var date = parseDate(getAttributeValue(node, "time"));
-      list.addAll(
-        cubeList.stream().map(
-          i -> new Cube(
-            getAttributeValue(i, "currency"),
-            Double.parseDouble(getAttributeValue(i, "rate")),
-            date
-          )
-        ).collect(Collectors.toList())
-      );
-    }
-    return list;
+  public List<Node> fetchNodeList() throws Exception {
+    var httpResponse = httpClient.execute(new HttpGet(this.exchangeApi));
+    var document = documentBuilder.parse(httpResponse.getEntity().getContent());
+    // Envelope
+    var envelopeNode = document.getDocumentElement();
+    // Cube -> Cube
+    return toListOfCubeNode(envelopeNode.getLastChild().getChildNodes());
   }
 
   /**
@@ -200,17 +173,49 @@ public class CurrencyService {
   }
 
   /**
-   * Fetch Node list
+   * Returns closest timestamp
    *
-   * @return list of cube nodes
-   * @throws Exception if xml is invalid
+   * @param timestamp Long
+   * @return Long
    */
-  private List<Node> fetchNodeList() throws Exception {
-    var httpResponse = httpClient.execute(new HttpGet(this.exchangeApi));
-    var document = documentBuilder.parse(httpResponse.getEntity().getContent());
-    // Envelope
-    var envelopeNode = document.getDocumentElement();
-    // Cube -> Cube
-    return toListOfCubeNode(envelopeNode.getLastChild().getChildNodes());
+  private Long getClosestTimestamp(final Long timestamp) {
+    return getCubes().stream().filter(i -> i.getTimestamp() <= timestamp).map(Cube::getTimestamp).unordered().collect(Collectors.toList()).get(0);
   }
+
+  /**
+   * Get attribute value
+   *
+   * @param node Node
+   * @param name String
+   * @return String
+   */
+  private String getAttributeValue(Node node, String name) {
+    return node.getAttributes().getNamedItem(name).getNodeValue();
+  }
+
+  /**
+   * Convert List<Node> to Cube map by date
+   *
+   * @param nodeList List<Node>
+   * @return HashMap<String, List < Cube>>
+   */
+  private List<Cube> toCubeList(List<Node> nodeList) {
+    var list = new ArrayList<Cube>();
+    for (Node node : nodeList) {
+      var cubeList = toListOfCubeNode(node.getChildNodes());
+      var dateFormat = Optional.ofNullable(format).orElse(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+      var date = LocalDate.parse(getAttributeValue(node, "time"), dateFormat);
+      list.addAll(
+        cubeList.stream().map(
+          i -> new Cube(
+            getAttributeValue(i, "currency"),
+            Double.parseDouble(getAttributeValue(i, "rate")),
+            date
+          )
+        ).collect(Collectors.toList())
+      );
+    }
+    return list;
+  }
+
 }

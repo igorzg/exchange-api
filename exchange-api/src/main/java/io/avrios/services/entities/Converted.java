@@ -34,4 +34,21 @@ public class Converted {
   public double getResult() {
     return result;
   }
+
+    @Override
+  public boolean equals(Object object) {
+    if (this == object) {
+      return true;
+    }
+    if (!(object instanceof Converted)) {
+      return false;
+    }
+
+    final Converted val = (Converted) object;
+
+    return this.getFrom().equals(val.getFrom()) &&
+      this.getInto().equals(val.getInto()) &&
+      this.getDate().equals(val.getDate()) &&
+      this.getResult() == val.getResult();
+  }
 }
